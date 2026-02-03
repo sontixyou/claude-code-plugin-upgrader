@@ -305,7 +305,7 @@ func checkNpmVersion(packageName string) (string, error) {
 	}
 
 	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("npm registry returned status %d for package %s", resp.StatusCode, packageName)
+		return "", fmt.Errorf("npm registry returned status %d for package '%s' (package may not exist or registry unavailable)", resp.StatusCode, packageName)
 	}
 
 	// Limit response body size to 10MB to prevent memory exhaustion
