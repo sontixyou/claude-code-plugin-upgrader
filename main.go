@@ -274,6 +274,9 @@ func checkLatestVersion(pluginName string) (string, error) {
 	// - GitHub releases API
 
 	// For demonstration, we'll check if it's an npm package
+	// Scoped packages start with @ and contain a slash (e.g., @scope/package)
+	// Non-scoped npm packages don't contain slashes (e.g., package-name)
+	// Packages with slashes but no @ are likely not npm packages (e.g., user/repo)
 	if strings.HasPrefix(pluginName, "@") || !strings.Contains(pluginName, "/") {
 		return checkNpmVersion(pluginName)
 	}
@@ -302,10 +305,12 @@ func checkNpmVersion(packageName string) (string, error) {
 	}
 
 	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("npm registry returned status %d", resp.StatusCode)
+		return "", fmt.Errorf("npm registry returned status %d for package %s", resp.StatusCode, packageName)
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	// Limit response body size to 10MB to prevent memory exhaustion
+	const maxBodySize = 10 * 1024 * 1024
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBodySize))
 	if err != nil {
 		return "", err
 	}

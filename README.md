@@ -89,12 +89,6 @@ The tool automatically detects the plugin directory based on your operating syst
 go build -o claude-plugin-upgrader
 ```
 
-### Testing
-
-```bash
-go test ./...
-```
-
 ## Supported Plugin Formats
 
 Currently supports plugins that:
