@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 )
 
 const (
@@ -156,13 +158,17 @@ func readPluginInfo(packageJSONPath, pluginPath string) (PluginInfo, error) {
 		return plugin, fmt.Errorf("failed to parse package.json: %w", err)
 	}
 
-	if name, ok := packageJSON["name"].(string); ok {
-		plugin.Name = name
+	name, hasName := packageJSON["name"].(string)
+	if !hasName || name == "" {
+		return plugin, fmt.Errorf("package.json missing required 'name' field")
 	}
+	plugin.Name = name
 
-	if version, ok := packageJSON["version"].(string); ok {
-		plugin.Version = version
+	version, hasVersion := packageJSON["version"].(string)
+	if !hasVersion || version == "" {
+		return plugin, fmt.Errorf("package.json missing required 'version' field")
 	}
+	plugin.Version = version
 
 	plugin.Path = pluginPath
 
@@ -212,7 +218,7 @@ func upgradePlugin(name string) {
 	}
 
 	for _, plugin := range plugins {
-		if strings.EqualFold(plugin.Name, name) {
+		if plugin.Name == name {
 			fmt.Printf("Upgrading %s...\n", plugin.Name)
 			if err := upgradePluginByInfo(plugin); err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to upgrade %s: %v\n", plugin.Name, err)
@@ -276,9 +282,16 @@ func checkLatestVersion(pluginName string) (string, error) {
 }
 
 func checkNpmVersion(packageName string) (string, error) {
-	url := fmt.Sprintf("https://registry.npmjs.org/%s", packageName)
+	// URL encode the package name to handle special characters safely
+	encodedName := url.PathEscape(packageName)
+	registryURL := fmt.Sprintf("https://registry.npmjs.org/%s", encodedName)
 
-	resp, err := http.Get(url)
+	// Create HTTP client with timeout to prevent indefinite hangs
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	resp, err := client.Get(registryURL)
 	if err != nil {
 		return "", err
 	}
