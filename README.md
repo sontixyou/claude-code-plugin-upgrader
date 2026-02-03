@@ -81,7 +81,7 @@ The tool automatically detects the plugin directory based on your operating syst
 
 ### Requirements
 
-- Go 1.19 or later
+- Go 1.21 or later
 
 ### Building
 
