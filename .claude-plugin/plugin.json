@@ -5,5 +5,7 @@
   "author": {
     "name": "kengo.nishimura"
   },
+  "repository": "https://github.com/sontixyou/claude-code-plugin-upgrader",
+  "license": "MIT",
   "keywords": ["plugin", "upgrade", "update", "management", "version"]
 }

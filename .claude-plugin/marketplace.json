@@ -1,0 +1,23 @@
+{
+  "name": "plugin-upgrader",
+  "owner": {
+    "name": "kengo.nishimura"
+  },
+  "metadata": {
+    "description": "Claude Code plugin upgrade management tools"
+  },
+  "plugins": [
+    {
+      "name": "plugin-upgrade",
+      "source": "./",
+      "description": "Upgrade multiple Claude Code plugins interactively with version checking and auto-update notifications",
+      "version": "0.0.1",
+      "author": {
+        "name": "kengo.nishimura"
+      },
+      "repository": "https://github.com/sontixyou/claude-code-plugin-upgrader",
+      "license": "MIT",
+      "keywords": ["plugin", "upgrade", "update", "management", "version"]
+    }
+  ]
+}
