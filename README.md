@@ -1,1 +1,49 @@
-# claude-code-plugin-upgrader
+# Plugin Upgrade
+
+Claude Code プラグインを複数選択してアップグレードできるプラグインです。
+
+## Features
+
+- 📋 **インストール済みプラグイン一覧**: バージョン情報付きで表示
+- 🔍 **更新チェック**: 最新バージョンとの比較
+- ⬆️ **一括アップグレード**: 対話形式で複数プラグインを選択してアップグレード
+- 🔔 **自動通知**: セッション開始時に更新可能なプラグインを通知
+
+## Commands
+
+| コマンド | 説明 |
+|---------|------|
+| `/plugin-upgrade:upgrade` | 対話形式でプラグインを選択してアップグレード |
+| `/plugin-upgrade:list` | インストール済みプラグインの一覧表示 |
+| `/plugin-upgrade:check` | 更新可能なプラグインをチェック |
+
+## Installation
+
+```bash
+# プラグインディレクトリに配置
+cp -r plugin-upgrade ~/.claude/plugins/
+```
+
+## Settings
+
+`~/.claude/plugin-upgrade.local.md` で設定をカスタマイズできます：
+
+```markdown
+# Plugin Upgrade Settings
+
+## Auto Check
+enabled: true
+
+## Excluded Plugins
+- some-plugin-to-exclude
+```
+
+## Requirements
+
+- Claude Code CLI
+- Git (Git リポジトリからのアップグレード用)
+- curl (Marketplace からのアップグレード用)
+
+## License
+
+MIT
