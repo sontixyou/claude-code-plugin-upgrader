@@ -1,0 +1,9 @@
+{
+  "name": "plugin-upgrade",
+  "version": "0.0.1",
+  "description": "Upgrade multiple Claude Code plugins interactively with version checking and auto-update notifications",
+  "author": {
+    "name": "kengo.nishimura"
+  },
+  "keywords": ["plugin", "upgrade", "update", "management", "version"]
+}
