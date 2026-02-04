@@ -4,10 +4,10 @@ Claude Code プラグインを複数選択してアップグレードできる�
 
 ## Features
 
-- 📋 **インストール済みプラグイン一覧**: バージョン情報付きで表示
-- 🔍 **更新チェック**: 最新バージョンとの比較
-- ⬆️ **一括アップグレード**: 対話形式で複数プラグインを選択してアップグレード
-- 🔔 **自動通知**: セッション開始時に更新可能なプラグインを通知
+- インストール済みプラグイン一覧: バージョン情報付きで表示
+- 更新チェック: 最新バージョンとの比較
+- 一括アップグレード: 対話形式で複数プラグインを選択してアップグレード
+- 自動通知: セッション開始時に更新可能なプラグインを通知
 
 ## Commands
 
@@ -19,9 +19,16 @@ Claude Code プラグインを複数選択してアップグレードできる�
 
 ## Installation
 
+### 1. マーケットプレイスを追加
+
 ```bash
-# プラグインディレクトリに配置
-cp -r plugin-upgrade ~/.claude/plugins/
+/plugin marketplace add sontixyou/claude-code-plugin-upgrader
+```
+
+### 2. プラグインをインストール
+
+```bash
+/plugin install plugin-upgrade@plugin-upgrader
 ```
 
 ## Settings
@@ -42,7 +49,6 @@ enabled: true
 
 - Claude Code CLI
 - Git (Git リポジトリからのアップグレード用)
-- curl (Marketplace からのアップグレード用)
 
 ## License
 
