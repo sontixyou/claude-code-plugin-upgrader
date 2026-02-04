@@ -1,60 +1,108 @@
 #!/bin/bash
 # Upgrade a single Claude Code plugin
-# Usage: upgrade-plugin.sh <plugin-name> [--dry-run]
+# Usage: upgrade-plugin.sh <plugin-name|plugin-id> [--dry-run]
+#
+# Examples:
+#   upgrade-plugin.sh findy-development-plugin
+#   upgrade-plugin.sh findy-development-plugin@Marcus
+#   upgrade-plugin.sh findy-development-plugin --dry-run
 
 set -e
 
-PLUGIN_NAME="$1"
+PLUGIN_INPUT="$1"
 DRY_RUN="${2:-}"
 PLUGINS_DIR="${HOME}/.claude/plugins"
 
-if [[ -z "$PLUGIN_NAME" ]]; then
-    echo "Error: Plugin name required"
-    echo "Usage: upgrade-plugin.sh <plugin-name> [--dry-run]"
+if [[ -z "$PLUGIN_INPUT" ]]; then
+    echo "Error: Plugin name or ID required"
+    echo "Usage: upgrade-plugin.sh <plugin-name|plugin-id> [--dry-run]"
+    echo ""
+    echo "Examples:"
+    echo "  upgrade-plugin.sh findy-development-plugin"
+    echo "  upgrade-plugin.sh findy-development-plugin@Marcus"
     exit 1
 fi
 
-# Find plugin directory
-find_plugin_dir() {
-    local name="$1"
+# Check if input contains marketplace (@)
+if [[ "$PLUGIN_INPUT" == *"@"* ]]; then
+    PLUGIN_NAME="${PLUGIN_INPUT%@*}"
+    PLUGIN_MARKETPLACE="${PLUGIN_INPUT#*@}"
+    PLUGIN_ID="$PLUGIN_INPUT"
+else
+    PLUGIN_NAME="$PLUGIN_INPUT"
+    PLUGIN_MARKETPLACE=""
+    PLUGIN_ID=""
+fi
 
-    # Check direct plugin directory
-    if [[ -d "${PLUGINS_DIR}/${name}" ]]; then
-        echo "${PLUGINS_DIR}/${name}"
+# Get plugin info from claude CLI
+get_plugin_info() {
+    local name="$1"
+    local marketplace="$2"
+
+    if ! command -v claude &> /dev/null; then
+        echo ""
         return
     fi
 
-    # Check cache directory
-    for source_dir in "${PLUGINS_DIR}/cache"/*/; do
-        if [[ -d "${source_dir}${name}" ]]; then
-            # Find nested directory with actual plugin
-            for nested in "${source_dir}${name}"/*/; do
-                if [[ -d "${nested}.claude-plugin" ]]; then
-                    echo "$nested"
-                    return
-                fi
-            done
-        fi
-    done
+    local plugin_data=$(claude plugin list --json 2>/dev/null)
 
-    echo ""
+    if [[ -z "$plugin_data" ]]; then
+        echo ""
+        return
+    fi
+
+    # If marketplace is specified, look for exact match
+    if [[ -n "$marketplace" ]]; then
+        echo "$plugin_data" | jq -r --arg id "${name}@${marketplace}" '.[] | select(.id == $id) | @json' 2>/dev/null | head -1
+    else
+        # Otherwise, look for any plugin with matching name
+        echo "$plugin_data" | jq -r --arg name "$name" '.[] | select(.id | startswith($name + "@")) | @json' 2>/dev/null | head -1
+    fi
 }
 
-get_plugin_source() {
-    local plugin_path="$1"
+# Get plugin information
+PLUGIN_INFO=$(get_plugin_info "$PLUGIN_NAME" "$PLUGIN_MARKETPLACE")
 
-    if [[ "$plugin_path" == *"/cache/claude-plugins-official/"* ]]; then
+if [[ -z "$PLUGIN_INFO" ]]; then
+    echo "Error: Plugin '$PLUGIN_INPUT' not found"
+    echo ""
+    echo "Installed plugins:"
+
+    if command -v claude &> /dev/null; then
+        claude plugin list --json 2>/dev/null | jq -r '.[].id' | sed 's/^/  - /'
+    else
+        echo "  (claude CLI not available)"
+    fi
+    exit 1
+fi
+
+# Extract plugin details
+PLUGIN_ID=$(echo "$PLUGIN_INFO" | jq -r '.id')
+PLUGIN_VERSION=$(echo "$PLUGIN_INFO" | jq -r '.version // "unknown"')
+PLUGIN_PATH=$(echo "$PLUGIN_INFO" | jq -r '.installPath // ""')
+PLUGIN_NAME="${PLUGIN_ID%@*}"
+PLUGIN_MARKETPLACE="${PLUGIN_ID#*@}"
+
+# Determine plugin source type
+get_plugin_source() {
+    local install_path="$1"
+
+    # Marketplace plugins are in cache directory
+    if [[ "$install_path" == *"/cache/"* ]]; then
         echo "marketplace"
         return
     fi
 
-    if [[ -d "${plugin_path}/.git" ]]; then
+    # Check if it's a git repository
+    if [[ -d "${install_path}/.git" ]]; then
         echo "git"
         return
     fi
 
     echo "local"
 }
+
+SOURCE=$(get_plugin_source "$PLUGIN_PATH")
 
 upgrade_git_plugin() {
     local plugin_path="$1"
@@ -111,52 +159,46 @@ upgrade_git_plugin() {
 }
 
 upgrade_marketplace_plugin() {
-    local plugin_path="$1"
-    local dry_run="$2"
+    local plugin_id="$1"
+    local plugin_path="$2"
+    local current_version="$3"
+    local dry_run="$4"
 
     echo "Marketplace plugin: $PLUGIN_NAME"
-    echo "Path: $plugin_path"
+    echo "Plugin ID: $plugin_id"
+    echo "Current version: $current_version"
+    echo "Marketplace: $PLUGIN_MARKETPLACE"
     echo ""
 
     if [[ "$dry_run" == "--dry-run" ]]; then
-        echo "[DRY RUN] Marketplace plugins are managed by Claude Code."
-        echo "To upgrade, use: claude plugins update $PLUGIN_NAME"
+        echo "[DRY RUN] Would execute:"
+        echo "  claude plugin update \"$plugin_id\""
     else
-        echo "Marketplace plugins are managed by Claude Code."
-        echo "To upgrade, use: claude plugins update $PLUGIN_NAME"
-        echo ""
-        echo "Attempting to trigger update..."
-        if command -v claude &> /dev/null; then
-            claude plugins update "$PLUGIN_NAME" 2>/dev/null || echo "Note: Please run 'claude plugins update $PLUGIN_NAME' manually if update fails."
+        echo "Updating marketplace plugin..."
+        if claude plugin update "$plugin_id" 2>&1; then
+            echo ""
+            echo "✓ Update command executed successfully."
+            echo "  Restart Claude Code to apply changes."
         else
-            echo "Claude CLI not found. Please update manually."
+            echo ""
+            echo "✗ Update failed. Try running manually:"
+            echo "  claude plugin update \"$plugin_id\""
+            exit 1
         fi
     fi
 }
 
 # Main logic
-PLUGIN_DIR=$(find_plugin_dir "$PLUGIN_NAME")
-
-if [[ -z "$PLUGIN_DIR" ]]; then
-    echo "Error: Plugin '$PLUGIN_NAME' not found"
-    echo ""
-    echo "Installed plugins:"
-    bash "${CLAUDE_PLUGIN_ROOT:-$(dirname "$0")/..}/scripts/list-plugins.sh" 2>/dev/null | tail -n +3 | awk '{print "  - " $1}' || ls -1 "$PLUGINS_DIR" 2>/dev/null | grep -v cache | sed 's/^/  - /'
-    exit 1
-fi
-
-SOURCE=$(get_plugin_source "$PLUGIN_DIR")
-
 case "$SOURCE" in
     "git")
-        upgrade_git_plugin "$PLUGIN_DIR" "$DRY_RUN"
+        upgrade_git_plugin "$PLUGIN_PATH" "$DRY_RUN"
         ;;
     "marketplace")
-        upgrade_marketplace_plugin "$PLUGIN_DIR" "$DRY_RUN"
+        upgrade_marketplace_plugin "$PLUGIN_ID" "$PLUGIN_PATH" "$PLUGIN_VERSION" "$DRY_RUN"
         ;;
     "local")
         echo "Plugin '$PLUGIN_NAME' is a local plugin (no Git repository)."
-        echo "Path: $PLUGIN_DIR"
+        echo "Path: $PLUGIN_PATH"
         echo ""
         echo "Local plugins cannot be automatically upgraded."
         echo "Please update the files manually."
